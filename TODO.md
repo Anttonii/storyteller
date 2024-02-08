@@ -1,7 +1,9 @@
 ## TODO
 
+- Add config file support
+- Add logging and better terminal colors
 - Add silence detection and split subs such that during silence nothing is shown
-- pydub works excellently here
+  - pydub works excellently here
 
 pydub snippet for detecting silence:
 

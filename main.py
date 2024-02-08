@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import subprocess
 
@@ -12,6 +12,7 @@ import moviepy.video.fx.all as vfx
 from moviepy.video.tools.subtitles import SubtitlesClip
 import srt_equalizer
 import srt
+from pydub import AudioSegment, silence
 
 #TODO:
 # - Add configuration from config files
@@ -49,15 +50,62 @@ def generate_audio_file(input: str, output):
 
     return output_wav_path
 
-def generate_subs(file, output):
+# Adds gaps to subtitles where silence is present
+def add_silence_gaps(audio, subs, output):
+    def time_in_between(sub_entry, time_start, time_end):
+        start = timedelta(milliseconds=time_start)
+        end = timedelta(milliseconds=time_end)
+
+        return sub_entry.end > start and sub_entry.start < end
+
+    myaudio = AudioSegment.from_wav(audio)
+    dbfs = myaudio.dBFS
+    sil = silence.detect_silence(myaudio, min_silence_len=450, silence_thresh=dbfs-15)
+    sil = [((start),(stop)) for start, stop in sil]
+
+    srt_file = open(subs, 'r')
+    file_content = srt_file.read()
+    srt_content = srt.parse(file_content)
+    srt_file.close()
+
+    indices = list(srt_content)
+    last_index = 0
+
+    for sil_gap in sil:
+        if last_index >= len(indices):
+            break
+        
+        while not last_index >= len(indices) and not time_in_between(indices[last_index], sil_gap[0], sil_gap[1]):
+            last_index += 1
+
+        print(indices[last_index])
+        indices[last_index].end = timedelta(milliseconds=sil_gap[0] + 150)
+        if(last_index < len(indices) - 1):
+            indices[last_index + 1].start = timedelta(milliseconds=sil_gap[1])
+
+        last_index += 1
+    
+    adjusted = srt.compose(indices)
+    adjusted_path = os.path.join(output, 'adjusted.srt')
+
+    adjusted_file = open(adjusted_path, 'w')
+    adjusted_file.write(adjusted)
+    adjusted_file.close()
+
+    return adjusted_path
+
+def generate_subs(audio, output):
     # Generate subs with subsai
-    subprocess.call(['subsai', file, '--model', 'ggerganov/whisper.cpp', '--model-configs', '{"model_type": "base"}', '--format', 'srt'])
+    subprocess.call(['subsai', audio, '--model', 'ggerganov/whisper.cpp', '--model-configs', '{"model_type": "base"}', '--format', 'srt'])
 
     # Equalize .srt file
     equalized_path = os.path.join(output, "equalized.srt")
-    srt_equalizer.equalize_srt_file(remove_extension(file) + ".srt", equalized_path, 16)
+    srt_equalizer.equalize_srt_file(remove_extension(audio) + ".srt", equalized_path, 16)
 
-    return equalized_path
+    # Add silence gaps to the .srt file
+    adjusted_path = add_silence_gaps(audio, equalized_path, output)
+
+    return adjusted_path
 
 def generate_video(audio_file, subs_file, output):
     # Subtitle generator
@@ -73,16 +121,15 @@ def process_video(input: str):
     print(f"Starting to process text data from input file: {input}")
     file = open(input, 'r')
     contents = file.read()
-    filtered = filter_content(contents)
+    file.close()
 
+    filtered = filter_content(contents)
     output = get_output_folder()
 
     output_wav_path = generate_audio_file(contents, output)
     output_subs_path = generate_subs(output_wav_path, output)
 
-    generate_video(output_wav_path, output_subs_path, output)
-
-    file.close()
+    # generate_video(output_wav_path, output_subs_path, output)
 
 def main(input: str = "input.txt"):
     process_video(input)
