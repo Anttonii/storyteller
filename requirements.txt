@@ -1,4 +1,6 @@
-subsai
+git+https://github.com/abdeladim-s/subsai
 typer
 tts
 moviepy
+srt_equalizer
+pydub

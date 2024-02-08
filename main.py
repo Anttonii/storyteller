@@ -1,16 +1,17 @@
-import typer
-
 from datetime import datetime
 import os
 import subprocess
 
+import typer
 import torch
+import whisper
 from TTS.api import TTS
-
 from moviepy.editor import *
 import moviepy.editor as mp
 import moviepy.video.fx.all as vfx
 from moviepy.video.tools.subtitles import SubtitlesClip
+import srt_equalizer
+import srt
 
 #TODO:
 # - Add configuration from config files
@@ -28,22 +29,35 @@ clips_path = "clips"
 # Get the video clip
 clip = VideoFileClip(os.path.join(clips_path, "clip1.mp4"))
 
-# Creates a new output folder and returns the path to it.
+# Creates a new output and returns the path to it.
 def get_output_folder():
     now = datetime.now()
     path = os.path.join(output_path, now.strftime("%d-%m-%y-%H-%M-%S"))
     os.makedirs(path)
     return path
 
+def remove_extension(file):
+    return file.split('.')[0]
+
 # Filters content to be youtube friendly.
 def filter_content(content: str):
     return content
 
 def generate_audio_file(input: str, output):
-    tts.tts_to_file(text=input, speaker="p230", file_path=output)
+    output_wav_path = os.path.join(output, "output.wav")
+    tts.tts_to_file(text=input, speaker="p230", file_path=output_wav_path)
 
-def generate_subs(file):
-    subprocess.call(['subsai', file, '--model', 'linto-ai/whisper-timestamped', '--model-configs', '{"model_type": "base"}', '--format', 'srt'])
+    return output_wav_path
+
+def generate_subs(file, output):
+    # Generate subs with subsai
+    subprocess.call(['subsai', file, '--model', 'ggerganov/whisper.cpp', '--model-configs', '{"model_type": "base"}', '--format', 'srt'])
+
+    # Equalize .srt file
+    equalized_path = os.path.join(output, "equalized.srt")
+    srt_equalizer.equalize_srt_file(remove_extension(file) + ".srt", equalized_path, 16)
+
+    return equalized_path
 
 def generate_video(audio_file, subs_file, output):
     # Subtitle generator
@@ -62,11 +76,9 @@ def process_video(input: str):
     filtered = filter_content(contents)
 
     output = get_output_folder()
-    output_wav_path = os.path.join(output, "output.wav")
-    output_subs_path = os.path.join(output, "output.srt")
 
-    generate_audio_file(contents, output_wav_path)
-    generate_subs(output_wav_path)
+    output_wav_path = generate_audio_file(contents, output)
+    output_subs_path = generate_subs(output_wav_path, output)
 
     generate_video(output_wav_path, output_subs_path, output)
 

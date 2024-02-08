@@ -13,11 +13,37 @@ Turns reddit posts into youtube videos with Python. Built against Python 3.9.6.
 
 ## Setup and building
 
-This repository is built with a Windows 11 machine and the following specifications:
+This repository is built with a Windows 11 machine using wsl and the following specifications:
 
-- Python 3.9.6
+- Python 3.11.7
+- Cuda 12.2.1 (not a hard dependency)
+
+Before installing the python dependencies make sure following libraries are installed:
+
+- ffmpeg
+- ImageMagick
+
+Instaling these can be achieved with
+
+```
+sudo apt install ffmpeg
+sudo apt install libmagick++
+sudo apt install imagemagick
+```
+
+After the necessary libraries have been installed, install python dependencies through pip:
+
+```
+pip install -r requirements.txt
+```
 
 ## Dependencies
 
-> [OpenAI Whisper](https://github.com/openai/whisper)  
-> [Typer](https://typer.tiangolo.com/) > [coquiai/TTS](https://github.com/coqui-ai/TTS)
+In short this project depends on the following libraries
+
+> [SubsAI](https://github.com/abdeladim-s/subsai)  
+> [Typer](https://typer.tiangolo.com/)  
+> [coquiai/TTS](https://github.com/coqui-ai/TTS)  
+> [moviepy](https://pypi.org/project/moviepy/)  
+> [srt_equalizer](https://github.com/peterk/srt_equalizer)  
+> [pydub](https://github.com/jiaaro/pydub)
