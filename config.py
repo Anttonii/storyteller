@@ -12,6 +12,11 @@ class App:
 
     @staticmethod
     def __generate(path: str):
+        """
+        Generates a new log file if an existing one can't be found.
+
+        :param path: path to the config file to be generated
+        """
         App.__conf = configparser.ConfigParser()
 
         App.__conf['default'] = {'keeptempfiles': 'True',
@@ -47,6 +52,6 @@ class App:
     @staticmethod
     def config():
         """
-        Returns a reference to the inner configuration parser
+        Returns the instance of the inner configuration parser
         """
         return App.__conf

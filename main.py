@@ -21,7 +21,7 @@ for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 
 # Basic config for all loggers
-logging.basicConfig(filename="latest.txt", encoding="utf-8", level=logging.DEBUG,
+logging.basicConfig(filename="latest.log", encoding="utf-8", level=logging.DEBUG,
                     format='%(asctime)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 # Config for main file logging
@@ -189,6 +189,18 @@ def add_silence_gaps(audio, subs, output):
     return adjusted_path
 
 
+def correct_subs(input: str, subs_path):
+    """
+    An optional check to see if the AI made mistakes transcribing the audio file
+
+    :param input: the input file in string format
+    :param subs_path: the subs file path to correct
+
+    :return: path to the new correct sub file
+    """
+    return subs_path
+
+
 def generate_subs(audio, output):
     """
     Generates a basis for an srt file by using subsai that relies on openai-whisper
@@ -253,6 +265,7 @@ def process_video(input: str):
     gen_audio = app.config().getboolean('generation', 'generateaudio')
     gen_subs = app.config().getboolean('generation', 'generatesubtitles')
     gen_video = app.config().getboolean('generation', 'generatevideo')
+    correct_subs = app.config().getboolean('generation', 'correctsubs')
 
     contents = ""
     with open(input, 'r') as file:
@@ -269,6 +282,8 @@ def process_video(input: str):
                 "Can not generate subs without generating an audio file.")
         else:
             output_subs_path = generate_subs(output_wav_path, output)
+            if correct_subs:
+                output_subs_path = correct_subs(input, output_subs_path)
 
     if gen_video:
         if not gen_audio:
@@ -278,7 +293,7 @@ def process_video(input: str):
             generate_video(output_wav_path, output_subs_path, output)
 
     # Copy log file over
-    shutil.copy("latest.txt", os.path.join(output, "output_log.txt"))
+    shutil.copy("latest.log", os.path.join(output, "output.log"))
 
 
 def read_config(config_file: str):
