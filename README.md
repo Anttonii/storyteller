@@ -50,6 +50,10 @@ After the necessary libraries for either system have been installed, install pyt
 pip install -r requirements.txt
 ```
 
+## Configurability
+
+storyteller comes with a default ini file. If one isn't present a default ini is regenerated at program startup. This ini file is stored on project root.
+
 ## Dependencies
 
 In short this project depends on the following python libraries
