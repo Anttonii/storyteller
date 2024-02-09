@@ -13,6 +13,8 @@ Turns reddit posts into youtube videos with Python. Built against Python 3.9.6.
 
 ## Setup and building
 
+### Windows
+
 This repository is built with a Windows 11 machine using wsl and the following specifications:
 
 - Python 3.11.7
@@ -29,9 +31,20 @@ Instaling these can be achieved with
 sudo apt install ffmpeg
 sudo apt install libmagick++
 sudo apt install imagemagick
+sudo apt isntall espeak-ng
 ```
 
-After the necessary libraries have been installed, install python dependencies through pip:
+### Mac OS X
+
+Similarly all dependencies can be easily installed with brew.
+
+´´´
+brew install ffmpeg
+brew install imagemagick
+brew install espeak
+´´´
+
+After the necessary libraries for either system have been installed, install python dependencies through pip:
 
 ```
 pip install -r requirements.txt
@@ -39,7 +52,7 @@ pip install -r requirements.txt
 
 ## Dependencies
 
-In short this project depends on the following libraries
+In short this project depends on the following python libraries
 
 > [SubsAI](https://github.com/abdeladim-s/subsai)  
 > [Typer](https://typer.tiangolo.com/)  
