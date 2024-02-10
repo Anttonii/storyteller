@@ -9,6 +9,8 @@
 &cross; Automatically correct subs when transcription makes mistakes  
 &cross; Use random clips for each video from the clips folder  
 &cross; Add looping background music that plays at a lower volume than speech
+&cross; Add a word filter that automatically removes bad words from input text
+&cross; Add additional audio effects to make changes to the speechs' pitch and tempo
 
 ## Thumbnails
 
@@ -23,3 +25,5 @@
 ## Server
 
 &cross; Implement a small-scale server that takes in input files and automatically turns them into videos and uploads them into youtube.
+&cross; This server should also hold a queue of input files that are currently being transformed into videos
+&cross; Alternatively taking in links such as reddit threads to form input.txt files from.

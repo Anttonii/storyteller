@@ -19,12 +19,23 @@ class App:
         """
         App.__conf = configparser.ConfigParser()
 
-        App.__conf['default'] = {'keeptempfiles': 'True',
-                                 'logginglevel': 'INFO'}
-        App.__conf['generation'] = {'generateaudio': 'True',
-                                    'generatesubtitles': 'True',
-                                    'generatevideo': 'True'}
-        App.__conf['ai'] = {'ttsmodel': 'tts_models/en/vctk/vits'}
+        App.__conf['default'] = {'keep_temp_files': 'True',
+                                 'logging_level': 'INFO'}
+        App.__conf['generation'] = {'generate_audio': 'True',
+                                    'generate_subtitles': 'True',
+                                    'correct_subs': 'True',
+                                    'generate_video': 'True'}
+        App.__conf['ai'] = {'tts_model': 'tts_models/en/vctk/vits'}
+
+        # Use additional audio effects
+        # Does nothing if use_effects is set to false
+        App.__conf['effects'] = {'use_effects': False,
+                                 'change_pitch': False,
+                                 'pitch_change': 0.0,
+                                 'change_tempo': False,
+                                 'tempo_change': 1.0,
+                                 'change_volume': False,
+                                 'volume_change': 1.0}
 
         with open(path, 'w') as config_file:
             App.__conf.write(config_file)

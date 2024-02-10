@@ -7,6 +7,8 @@ import config as conf
 
 import typer
 import torch
+import librosa
+import soundfile
 from TTS.api import TTS
 from moviepy.editor import *
 import moviepy.editor as mp
@@ -127,7 +129,7 @@ def generate_audio_file(input, output):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Init TTS
-    tts = TTS(model_name=app.config()['ai']['ttsmodel'],
+    tts = TTS(model_name=app.config()['ai']['tts_model'],
               progress_bar=True).to(device)
 
     output_wav_path = os.path.join(output, "output.wav")
@@ -137,6 +139,9 @@ def generate_audio_file(input, output):
     normalized = AudioSegment.from_wav(output_wav_path)
     normalized = effects.normalize(normalized)
     normalized.export(output_wav_path, format="wav")
+
+    if app.config().getboolean('effects', 'use_effects'):
+        use_effects(output_wav_path)
 
     return output_wav_path
 
@@ -201,6 +206,36 @@ def correct_subs(input: str, subs_path):
     return subs_path
 
 
+def use_effects(audio):
+    """
+    Adds additional effects to audio files after one has been produced.
+    Used in conjuction with config file.
+
+    :param audio: path to the audio file
+
+    :return: path to the audio file with effects
+    """
+    y, sr = librosa.load(audio)
+
+    change_pitch = app.config().getboolean('effects', 'change_pitch')
+    change_tempo = app.config().getboolean('effects', 'change_tempo')
+    change_volume = app.config().getboolean('effects', 'change_volume')
+
+    pitch_change = app.config()['effects']['pitch_change']
+    tempo_change = app.config()['effects']['tempo_change']
+    volume_change = app.config()['effects']['volume_change']
+
+    if change_pitch:
+        y = librosa.effects.pitch_shift(y, sr, pitch_change)
+    if change_tempo:
+        y = librosa.effects.time_stretch(y, tempo_change)
+    if change_volume:
+        y = y * volume_change
+
+    soundfile.write(audio, y, sr)
+    return audio
+
+
 def generate_subs(audio, output):
     """
     Generates a basis for an srt file by using subsai that relies on openai-whisper
@@ -223,7 +258,7 @@ def generate_subs(audio, output):
     adjusted_path = add_silence_gaps(audio, equalized_path, output)
 
     # Remove the equalized file if configured to do so
-    if not app.config().getboolean('default', 'keeptempfiles'):
+    if not app.config().getboolean('default', 'keep_temp_files'):
         os.remove(equalized_path)
 
     return adjusted_path
@@ -262,10 +297,10 @@ def process_video(input: str):
     """
     logger.info(f"Starting to process text data from input file: {input}")
 
-    gen_audio = app.config().getboolean('generation', 'generateaudio')
-    gen_subs = app.config().getboolean('generation', 'generatesubtitles')
-    gen_video = app.config().getboolean('generation', 'generatevideo')
-    correct_subs = app.config().getboolean('generation', 'correctsubs')
+    gen_audio = app.config().getboolean('generation', 'generate_audio')
+    gen_subs = app.config().getboolean('generation', 'generate_subtitles')
+    gen_video = app.config().getboolean('generation', 'generate_video')
+    cor_subs = app.config().getboolean('generation', 'correct_subs')
 
     contents = ""
     with open(input, 'r') as file:
@@ -282,7 +317,7 @@ def process_video(input: str):
                 "Can not generate subs without generating an audio file.")
         else:
             output_subs_path = generate_subs(output_wav_path, output)
-            if correct_subs:
+            if cor_subs:
                 output_subs_path = correct_subs(input, output_subs_path)
 
     if gen_video:
@@ -304,7 +339,7 @@ def read_config(config_file: str):
     """
     app.init(config_file)
 
-    level: str = app.config()['default']['logginglevel']
+    level: str = app.config()['default']['logging_level']
     if level == "INFO":
         logger.setLevel(logging.INFO)
     elif level == "WARNING":
