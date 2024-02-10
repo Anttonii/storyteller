@@ -10,7 +10,8 @@
 &cross; Use random clips for each video from the clips folder  
 &cross; Add looping background music that plays at a lower volume than speech
 &cross; Add a word filter that automatically removes bad words from input text
-&cross; Add additional audio effects to make changes to the speechs' pitch and tempo
+&check; Add additional audio effects to make changes to the speechs' pitch and tempo
+&cross; Configurably start removing outputs after a certain threshold
 
 ## Thumbnails
 

@@ -3,6 +3,7 @@ import os
 import subprocess
 import logging
 import shutil
+import re
 import config as conf
 
 import typer
@@ -24,7 +25,8 @@ for handler in logging.root.handlers[:]:
 
 # Basic config for all loggers
 logging.basicConfig(filename="latest.log", encoding="utf-8", level=logging.DEBUG,
-                    format='%(asctime)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+                    format='%(asctime)s : %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',
+                    filemode='w')
 
 # Config for main file logging
 logger = logging.getLogger(__name__)
@@ -63,15 +65,54 @@ def remove_extension(file):
     return file.split('.')[0]
 
 
-def filter_content(content: str):
+def load_bad_words(bw_path):
     """
-    Filters content to be youtube friendly by filtering bad words out
+    Loads bad words to be filtered from a text file into a dictionary
+
+    :param path: path to the file containing mapping of bad words to more suitable ones
+
+    :return: the dictionary that contains word conversions
+    """
+    logger.info("Loading bad words file into a dictionary")
+    dictionary = {}
+
+    if not os.path.exists(bw_path):
+        logger.error(
+            "Invalid path to bad words file, no dictionary will be loaded.")
+        return dictionary
+
+    with open(bw_path, 'r') as bad_words_file:
+        lines = bad_words_file.readlines()
+
+        for line in lines:
+            if len(line) == 0:
+                continue
+
+            splitted = line.split(':')
+            bad_word = splitted[0].strip()
+            conversion = splitted[1].strip()
+
+            dictionary[bad_word] = conversion
+
+    return dictionary
+
+
+def filter_content(content: str, bad_word_dict):
+    """
+    Filters content to be youtube friendly by filtering bad words out using regular expressions
 
     :param content: the content of the input file
 
     :return: the filtered content
     """
-    return content
+    logger.info("Filtering content to be youtube friendly.")
+    filtered_content = content
+
+    for word in bad_word_dict:
+        filtered_content = re.sub(
+            word, bad_word_dict[word], filtered_content, flags=re.IGNORECASE)
+
+    return filtered_content
 
 
 def detect_silence(path, time: str):
@@ -289,7 +330,7 @@ def generate_video(audio_file, subs_file, output):
     return output_file
 
 
-def process_video(input: str):
+def process_video(input: str, bad_word_dict):
     """
     Processes the input file into video according to configuration
 
@@ -306,11 +347,12 @@ def process_video(input: str):
     with open(input, 'r') as file:
         contents = file.read()
 
-    filtered = filter_content(contents)
+    filtered = filter_content(contents, bad_word_dict)
     output = get_output_folder()
 
     if gen_audio:
-        output_wav_path = generate_audio_file(contents, output)
+        output_wav_path = generate_audio_file(filtered, output)
+
     if gen_subs:
         if not gen_audio:
             logger.warn(
@@ -367,7 +409,10 @@ def main(input: Annotated[str, typer.Option(
     config: Annotated[str, typer.Option(
         help="Path to config file.")] = "default.ini",
     purge: Annotated[bool, typer.Option(
-        help="Removes all pre-existing folders from the output folder.")] = False):
+        help="Removes all pre-existing folders from the output folder.")] = False,
+        bad_words: Annotated[str, typer.Option(
+            help="Path to text file that contains words that should be converted to be more Youtube friendly"
+        )] = "bad_words.txt"):
     """
     Generates audio, subtitles and video from a given text input file.
 
@@ -376,11 +421,14 @@ def main(input: Annotated[str, typer.Option(
     # Load defined config file or default.
     read_config(config)
 
+    # Load bad words into a dictionary
+    bad_word_dict = load_bad_words(bad_words)
+
     # Removes all files from output folder if purge option is set.
     if purge:
         purge_output_folder()
 
-    process_video(input)
+    process_video(input, bad_word_dict)
 
 
 if __name__ == "__main__":
