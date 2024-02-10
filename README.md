@@ -62,6 +62,20 @@ python main.py --input <input.txt file>
 
 which will generate audio, subtitles and video into the output folder. This will take a while on the first run since downloading and installing the models is necessary, but they will remain cached for consequent runs.
 
+## CLI
+
+Running storyteller from command line is easy after dependencies have been installed.
+
+```sh
+python main.py --input input.txt --config default.ini
+```
+
+Produces audio, subtitles and video from a given input text file. To see all options, run:
+
+```sh
+python main.py --help
+```
+
 ## Configurability
 
 storyteller comes with a default ini file. If one isn't present a default ini is regenerated at program startup. This ini file is stored in the projects root direcotry with name `default.ini`.

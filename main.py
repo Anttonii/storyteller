@@ -6,13 +6,13 @@ import shutil
 import config as conf
 
 import typer
+from typing_extensions import Annotated
+
 import torch
 import librosa
 import soundfile
 from TTS.api import TTS
 from moviepy.editor import *
-import moviepy.editor as mp
-import moviepy.video.fx.all as vfx
 from moviepy.video.tools.subtitles import SubtitlesClip
 import srt_equalizer
 import srt
@@ -350,9 +350,36 @@ def read_config(config_file: str):
         logging.setLevel(logging.ERROR)
 
 
-def main(input: str = "input.txt", config_file: str = "default.ini"):
+def purge_output_folder():
+    """
+    Purges the output folder deleting all pre-existing folders before creating a new output folder.
+    """
+    logger.info("Purging output folder")
+    for root, dirs, files in os.walk(output_path, topdown=False):
+        for name in files:
+            os.remove(os.path.join(root, name))
+        for name in dirs:
+            os.rmdir(os.path.join(root, name))
+
+
+def main(input: Annotated[str, typer.Option(
+        help="Path to input text file.")] = "input.txt",
+    config: Annotated[str, typer.Option(
+        help="Path to config file.")] = "default.ini",
+    purge: Annotated[bool, typer.Option(
+        help="Removes all pre-existing folders from the output folder.")] = False):
+    """
+    Generates audio, subtitles and video from a given text input file.
+
+    Highly configurable.
+    """
     # Load defined config file or default.
-    read_config(config_file)
+    read_config(config)
+
+    # Removes all files from output folder if purge option is set.
+    if purge:
+        purge_output_folder()
+
     process_video(input)
 
 
