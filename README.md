@@ -32,32 +32,32 @@ Before installing the python dependencies make sure following libraries are inst
 Instaling these can be achieved with the following commands
 
 ```
-sudo apt install ffmpeg
-sudo apt install libmagick++
-sudo apt install imagemagick
-sudo apt isntall espeak-ng
+$ sudo apt install ffmpeg
+$ sudo apt install libmagick++
+$ sudo apt install imagemagick
+$ sudo apt isntall espeak-ng
 ```
 
 ### Mac OS X
 
 Similarly all dependencies can be easily installed with brew.
 
-```
-brew install ffmpeg
-brew install imagemagick
-brew install espeak
+```console
+$ brew install ffmpeg
+$ brew install imagemagick
+$ brew install espeak
 ```
 
 After the necessary libraries for either system have been installed, install python dependencies through pip:
 
-```
-pip install -r requirements.txt
+```console
+$ pip install -r requirements.txt
 ```
 
 To verify the installation and to download necessary models, run
 
-```
-python main.py --input <input.txt file>
+```console
+$ python main.py --input <input.txt file>
 ```
 
 which will generate audio, subtitles and video into the output folder. This will take a while on the first run since downloading and installing the models is necessary, but they will remain cached for consequent runs.
@@ -66,14 +66,14 @@ which will generate audio, subtitles and video into the output folder. This will
 
 Running storyteller from command line is easy after dependencies have been installed.
 
-```sh
-python main.py --input input.txt --config default.ini
+```console
+$ python main.py --input input.txt --config default.ini
 ```
 
 Produces audio, subtitles and video from a given input text file. To see all options, run:
 
-```sh
-python main.py --help
+```console
+$ python main.py --help
 ```
 
 ## Configurability
@@ -89,6 +89,10 @@ Default block
 keep_temp_files = True
 # Logging level, valid values [INFO, WARNING, DEBUG, ERROR]
 logging_level = INFO
+# Paths to folders that have necessary files for video generation
+output_path = output
+clips_path = clips
+songs_path = songs
 ```
 
 Generation block

@@ -4,6 +4,7 @@ import subprocess
 import logging
 import shutil
 import re
+import random
 import config as conf
 
 import typer
@@ -34,13 +35,6 @@ logger = logging.getLogger(__name__)
 # App that holds the configuration
 app = conf.App
 
-# Folders to use
-output_path = "output"
-clips_path = "clips"
-
-# Get the video clip
-clip = VideoFileClip(os.path.join(clips_path, "clip1.mp4"))
-
 
 def get_output_folder():
     """
@@ -48,10 +42,22 @@ def get_output_folder():
 
     :return" path to the created folder
     """
+    output_path = app.config()['default']['output_path']
     now = datetime.now()
     path = os.path.join(output_path, now.strftime("%d-%m-%y-%H-%M-%S"))
     os.makedirs(path)
     return path
+
+
+def get_clip_path():
+    """
+    Returns a random clip to use for the video from the clips folder
+
+    :return: generate video file clip
+    """
+    clips_path = app.config()['default']['clips_path']
+    files = [f for f in os.listdir(clips_path) if os.path.isfile(f)]
+    return files[random.randint(0, len(files) - 1)]
 
 
 def remove_extension(file):
@@ -329,6 +335,7 @@ def generate_video(audio_file, subs_file, output):
                                         stroke_color=stroke_col, stroke_width=stroke_w)
     subs = SubtitlesClip(subs_file, generator)
 
+    clip = VideoFileClip(get_clip_path())
     gen_clip = clip.set_audio(audio)
     gen_clip = gen_clip.loop(duration=audio.duration)
 
@@ -339,13 +346,15 @@ def generate_video(audio_file, subs_file, output):
     return output_file
 
 
-def process_video(input: str, bad_word_dict):
+def process_input(input: str, bad_word_dict):
     """
     Processes the input file into video according to configuration
 
     :param input: path to the input file
     """
     logger.info(f"Starting to process text data from input file: {input}")
+
+    output = app.config()['default', 'output_path']
 
     gen_audio = app.config().getboolean('generation', 'generate_audio')
     gen_subs = app.config().getboolean('generation', 'generate_subtitles')
@@ -406,6 +415,7 @@ def purge_output_folder():
     Purges the output folder deleting all pre-existing folders before creating a new output folder.
     """
     logger.info("Purging output folder")
+    output_path = app.confg()['default']['output_path']
     for root, dirs, files in os.walk(output_path, topdown=False):
         for name in files:
             os.remove(os.path.join(root, name))
@@ -437,7 +447,7 @@ def main(input: Annotated[str, typer.Option(
     if purge:
         purge_output_folder()
 
-    process_video(input, bad_word_dict)
+    process_input(input, bad_word_dict)
 
 
 if __name__ == "__main__":

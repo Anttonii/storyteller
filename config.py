@@ -20,7 +20,10 @@ class App:
         App.__conf = configparser.ConfigParser()
 
         App.__conf['default'] = {'keep_temp_files': False,
-                                 'logging_level': 'INFO'}
+                                 'logging_level': 'INFO',
+                                 'output_path': 'output',
+                                 'clips_path': 'clips',
+                                 'songs_path': 'songs'}
 
         App.__conf['generation'] = {'generate_audio': True,
                                     'generate_subtitles': True,
