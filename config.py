@@ -26,6 +26,7 @@ class App:
                                  'songs_path': 'songs'}
 
         App.__conf['generation'] = {'generate_audio': True,
+                                    'audio_backend': 'polly',
                                     'generate_subtitles': True,
                                     'correct_subs': True,
                                     'generate_video': True}
@@ -41,6 +42,8 @@ class App:
                                  'tempo_change': 1.0,
                                  'change_volume': False,
                                  'volume_change': 1.0}
+
+        App.__conf['polly'] = {'voice_id': 'Matthew'}
 
         App.__conf['subtitles'] = {'font': 'Arial',
                                    'font_size': 48,

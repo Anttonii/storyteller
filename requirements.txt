@@ -4,3 +4,4 @@ tts
 moviepy
 srt_equalizer
 pydub
+boto3

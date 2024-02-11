@@ -19,6 +19,9 @@ from moviepy.video.tools.subtitles import SubtitlesClip
 import srt_equalizer
 import srt
 from pydub import AudioSegment, effects
+from boto3 import Session
+from botocore.exceptions import BotoCoreError, ClientError
+from contextlib import closing
 
 # Empty out root handlers so that a new log file can be created.
 for handler in logging.root.handlers[:]:
@@ -180,13 +183,44 @@ def detect_silence(path, time: str):
     return list(zip(start, end))
 
 
-def generate_audio_file(input, output):
+def generate_polly_audio(input, output):
     """
-    Generates an audio file from string input and writes it to output.
+    Generates an audio file using Amazon polly.
 
-    :param input: string input to turn to speech
-    :param output: path to output where the .wav output file will be written to
-    :return: returns the path to the generated file.
+    Raises an AssertionException if Polly fails to produce a response.
+    """
+
+    output_path = os.path.join(output, 'output.mp3')
+    session = Session(profile_name="my-dev-profile")
+    polly = session.client("polly")
+
+    voice_id = app.config()['polly']['voice_id']
+
+    try:
+        # Request speech synthesis
+        response = polly.synthesize_speech(Text=input, OutputFormat="mp3",
+                                           VoiceId=voice_id)
+    except (BotoCoreError, ClientError) as error:
+        logger.error("AWS Polly Service returned an error.")
+        logger.error(error)
+
+    if "AudioStream" in response:
+        with closing(response["AudioStream"]) as stream:
+            try:
+                with open(output_path, "wb") as file:
+                    file.write(stream.read())
+            except IOError as error:
+                logger.error("Failed to write Amazon Polly response to file.")
+                logger.error(error)
+
+    # Assert an output file was created.
+    assert os.path.isfile(output_path)
+    return output_path
+
+
+def generate_tts_audio(input, output):
+    """
+    Generates the audio using TTS.
     """
     # Get available device
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -198,15 +232,39 @@ def generate_audio_file(input, output):
     output_wav_path = os.path.join(output, "output.wav")
     tts.tts_to_file(text=input, speaker="p230", file_path=output_wav_path)
 
+    return output_wav_path
+
+
+def generate_audio_file(input, output):
+    """
+    Generates an audio file from string input and writes it to output.
+
+    Raises AssertionException if incorrect audio backend is configured.
+
+    :param input: string input to turn to speech
+    :param output: path to output where the generated output file will be written to
+    :return: returns the path to the generated file.
+    """
+    backend = app.config()['generation']['audio_backend']
+    assert backend in ["polly", "tts", "tiktok"]
+
+    match backend:
+        case "polly":
+            output_path = generate_polly_audio(input, output)
+            output_format = "mp3"
+        case "tts":
+            output_path = generate_tts_audio(input, output)
+            output_format = "wav"
+
     # Normalize audio segment
-    normalized = AudioSegment.from_wav(output_wav_path)
+    normalized = AudioSegment.from_file(output_path, output_format)
     normalized = effects.normalize(normalized)
-    normalized.export(output_wav_path, format="wav")
+    normalized.export(output_path, format=output_format)
 
     if app.config().getboolean('effects', 'use_effects'):
-        use_effects(output_wav_path)
+        use_effects(output_path)
 
-    return output_wav_path
+    return output_path
 
 
 def add_silence_gaps(audio, subs, output):
@@ -393,14 +451,14 @@ def process_input(input: str, bad_word_dict):
     output = get_output_folder()
 
     if gen_audio:
-        output_wav_path = generate_audio_file(filtered, output)
+        output_audio_path = generate_audio_file(filtered, output)
 
     if gen_subs:
         if not gen_audio:
             logger.warn(
                 "Can not generate subs without generating an audio file.")
         else:
-            output_subs_path = generate_subs(output_wav_path, output)
+            output_subs_path = generate_subs(output_audio_path, output)
             if cor_subs:
                 output_subs_path = correct_subs(input, output_subs_path)
 
@@ -409,7 +467,7 @@ def process_input(input: str, bad_word_dict):
             logger.warn(
                 'Can not generate video without at least generating an audio file.')
         else:
-            generate_video(output_wav_path, output_subs_path, output)
+            generate_video(output_audio_path, output_subs_path, output)
 
     # Copy log file over
     shutil.copy("latest.log", os.path.join(output, "output.log"))
