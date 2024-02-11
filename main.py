@@ -68,7 +68,7 @@ def get_clip_path():
     Returns a random clip to use for the video from the clips folder
     """
     clips_path = app.config()['default']['clips_path']
-    return get_random_file(os.path.join(os.getcwd(), clips_path))
+    return get_random_file(clips_path)
 
 
 def get_song_path():
@@ -76,7 +76,7 @@ def get_song_path():
     Returns a random audio file to use from the songs folder
     """
     songs_path = app.config()['default']['songs_path']
-    return get_random_file(os.path.join(os.getcwd(), songs_path))
+    return get_random_file(songs_path)
 
 
 def remove_extension(file):
@@ -88,6 +88,23 @@ def remove_extension(file):
     :return: the file path without file extension
     """
     return file.split('.')[0]
+
+
+def prune_output_folder():
+    """
+    Prunes automatically output folder until there are kept_folders amount folders left.
+    """
+    logger.info("Pruning output folder")
+
+    output_path = app.config()['default']['output_path']
+    kept_output_folders = app.config().getint('default', 'kept_output_folders')
+
+    list = [d for d in os.listdir(output_path)]
+    while len(list) >= kept_output_folders:
+        folder = list[0]
+        folder_path = os.path.join(output_path, folder)
+        shutil.rmtree(folder_path)
+        list.pop(0)
 
 
 def load_bad_words(bw_path):
@@ -522,12 +539,19 @@ def main(input: Annotated[str, typer.Option(
     # Load defined config file or default.
     read_config(config)
 
+    automatic_output_pruning = app.config().getboolean(
+        'default', 'automatic_output_pruning')
+
     # Load bad words into a dictionary
     bad_word_dict = load_bad_words(bad_words)
 
     # Removes all files from output folder if purge option is set.
     if purge:
         purge_output_folder()
+
+    # Prunes output folder removing folders until threshold is hit.
+    if automatic_output_pruning:
+        prune_output_folder()
 
     process_input(input, bad_word_dict)
 

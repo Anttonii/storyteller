@@ -7,6 +7,10 @@ Default block
 keep_temp_files = True
 # Logging level, valid values [INFO, WARNING, DEBUG, ERROR]
 logging_level = INFO
+# Whether or not to automatically remove generated output folders after threshold has been reached.
+automatic_output_pruning = True
+# How many output folders will be kept, after the limit earliest output folder will get removed.
+kept_output_folder = 10
 # Paths to folders that have necessary files for video generation
 output_path = output
 clips_path = clips
@@ -18,6 +22,8 @@ Generation block
 ```ini
 # Generates audio files from input text
 generate_audio = True
+# Which backend to generate audio with, valid values ["polly", "tts"]
+audio_backend = tts
 # Generates subtitles from audio file, requires generate_audio to be true.
 generate_subs = True
 # Generates video from audio file, requires generate_audio to be true.
@@ -31,6 +37,13 @@ AI block
 ```ini
 # Changes the AI model used by coqui/tts
 tts_model = tts_models/en/vctk/vits
+```
+
+Polly block
+
+```ini
+# Which voice ID polly should use when generating TTS.
+voice_id = Matthew
 ```
 
 Effects block

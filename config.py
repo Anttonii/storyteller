@@ -21,12 +21,14 @@ class App:
 
         App.__conf['default'] = {'keep_temp_files': False,
                                  'logging_level': 'INFO',
+                                 'automatic_output_pruning': True,
+                                 'kept_output_folders': 10,
                                  'output_path': 'output',
                                  'clips_path': 'clips',
                                  'songs_path': 'songs'}
 
         App.__conf['generation'] = {'generate_audio': True,
-                                    'audio_backend': 'polly',
+                                    'audio_backend': 'tts',
                                     'generate_subtitles': True,
                                     'correct_subs': True,
                                     'generate_video': True}

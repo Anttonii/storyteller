@@ -4,7 +4,7 @@
 
 - &cross; Add support for multiple TTS backend
   - &check; coqui-ai/tts
-  - &cross; Amazon Polly
+  - &check; Amazon Polly
   - &cross; Tiktok voice
 - &check; Add config file support
   - &cross; Assert configurability is present in necessary situations
@@ -15,7 +15,7 @@
 - &check; Add looping background music that plays at a lower volume than speech
 - &check; Add a word filter that automatically removes bad words from input text
 - &check; Add possibility of additional audio effects to make changes to the speechs' pitch and tempo
-- &cross; Configurably start removing outputs after a certain threshold
+- &check; Configurably start removing outputs after a certain threshold
 
 ## Thumbnails
 
