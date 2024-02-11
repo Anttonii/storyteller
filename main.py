@@ -49,15 +49,31 @@ def get_output_folder():
     return path
 
 
+def get_random_file(path):
+    """
+    Returns a random file from a directory.
+
+    Throws an AssertionException if directory is empty.
+    """
+    list = [f for f in os.listdir(path) if "DS_Store" not in f]
+    assert len(list) > 0
+    return os.path.join(path, random.choice(list))
+
+
 def get_clip_path():
     """
     Returns a random clip to use for the video from the clips folder
-
-    :return: generate video file clip
     """
     clips_path = app.config()['default']['clips_path']
-    files = [f for f in os.listdir(clips_path) if os.path.isfile(f)]
-    return files[random.randint(0, len(files) - 1)]
+    return get_random_file(os.path.join(os.getcwd(), clips_path))
+
+
+def get_song_path():
+    """
+    Returns a random audio file to use from the songs folder
+    """
+    songs_path = app.config()['default']['songs_path']
+    return get_random_file(os.path.join(os.getcwd(), songs_path))
 
 
 def remove_extension(file):
@@ -266,18 +282,14 @@ def use_effects(audio):
 
     change_pitch = app.config().getboolean('effects', 'change_pitch')
     change_tempo = app.config().getboolean('effects', 'change_tempo')
-    change_volume = app.config().getboolean('effects', 'change_volume')
 
     pitch_change = app.config()['effects']['pitch_change']
     tempo_change = app.config()['effects']['tempo_change']
-    volume_change = app.config()['effects']['volume_change']
 
     if change_pitch:
         y = librosa.effects.pitch_shift(y, sr, pitch_change)
     if change_tempo:
         y = librosa.effects.time_stretch(y, tempo_change)
-    if change_volume:
-        y = y * volume_change
 
     soundfile.write(audio, y, sr)
     return audio
@@ -321,23 +333,35 @@ def generate_video(audio_file, subs_file, output):
 
     :return: path to the generated video file
     """
-    # Subtitle generator
+    # Configuration
     text_font = app.config()['subtitles']['font']
     font_size = app.config().getint('subtitles', 'font_size')
     font_color = app.config()['subtitles']['font_color']
     stroke_col = app.config()['subtitles']['stroke_color']
     stroke_w = app.config().getfloat('subtitles', 'stroke_width')
 
+    change_volume = app.config().getboolean('effects', 'change_volume')
+    volume_change = app.config().getfloat('effects', 'volume_change')
+
     audio = AudioFileClip(audio_file)
+    if change_volume:
+        audio = audio.volumex(volume_change)
+
+    # Set the background songs volume to 40%
+    background_song = AudioFileClip(get_song_path())
+    background_song = background_song.volumex(0.4)
+    background_song = background_song.audio_loop(duration=audio.duration)
+
+    comp_audio = CompositeAudioClip([audio, background_song])
+
+    clip = VideoFileClip(get_clip_path())
+    gen_clip = clip.set_audio(comp_audio)
+    gen_clip = gen_clip.loop(duration=comp_audio.duration)
 
     def generator(txt): return TextClip(txt, font=text_font,
                                         fontsize=font_size, color=font_color, size=clip.size,
                                         stroke_color=stroke_col, stroke_width=stroke_w)
     subs = SubtitlesClip(subs_file, generator)
-
-    clip = VideoFileClip(get_clip_path())
-    gen_clip = clip.set_audio(audio)
-    gen_clip = gen_clip.loop(duration=audio.duration)
 
     output_file = os.path.join(output, 'output.mp4')
     result = CompositeVideoClip([gen_clip, subs.set_pos(('center', 'center'))])
@@ -354,7 +378,7 @@ def process_input(input: str, bad_word_dict):
     """
     logger.info(f"Starting to process text data from input file: {input}")
 
-    output = app.config()['default', 'output_path']
+    output = app.config()['default']['output_path']
 
     gen_audio = app.config().getboolean('generation', 'generate_audio')
     gen_subs = app.config().getboolean('generation', 'generate_subtitles')
