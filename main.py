@@ -223,7 +223,7 @@ def add_silence_gaps(audio, subs, output):
             if time_in_between(sub_index, sil_gap[0], sil_gap[1]):
                 # Add a slight delay before the subtitle disappears
                 sub_index.end = timedelta(
-                    seconds=sil_gap[0]) + timedelta(milliseconds=150)
+                    seconds=sil_gap[0]) + timedelta(milliseconds=200)
                 last_index = sub_index.index - 1
 
     adjusted = srt.compose(indices)
@@ -316,10 +316,19 @@ def generate_video(audio_file, subs_file, output):
     :return: path to the generated video file
     """
     # Subtitle generator
+    text_font = app.config()['subtitles']['font']
+    font_size = app.config().getint('subtitles', 'font_size')
+    font_color = app.config()['subtitles']['font_color']
+    stroke_col = app.config()['subtitles']['stroke_color']
+    stroke_w = app.config().getfloat('subtitles', 'stroke_width')
+
     audio = AudioFileClip(audio_file)
-    def generator(txt): return TextClip(txt, font='Arial',
-                                        fontsize=48, color='white', size=clip.size)
+
+    def generator(txt): return TextClip(txt, font=text_font,
+                                        fontsize=font_size, color=font_color, size=clip.size,
+                                        stroke_color=stroke_col, stroke_width=stroke_w)
     subs = SubtitlesClip(subs_file, generator)
+
     gen_clip = clip.set_audio(audio)
     gen_clip = gen_clip.loop(duration=audio.duration)
 

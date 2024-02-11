@@ -130,6 +130,18 @@ change_volume = False
 volume_change = 1.0
 ```
 
+Subtitles block
+
+```ini
+# Font doesn't accept paths but uses OS-supported fonts.
+font = 'Arial'
+font_size = 48
+font_color = white
+stroke_color = black
+# Width of stroke around the text in pixels.
+stroke_width = 2.0
+```
+
 ## Dependencies
 
 In short this project depends on the following python libraries
