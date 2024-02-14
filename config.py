@@ -25,7 +25,9 @@ class App:
                                  'kept_output_folders': 10,
                                  'output_path': 'output',
                                  'clips_path': 'clips',
-                                 'songs_path': 'songs'}
+                                 'songs_path': 'songs',
+                                 'static_path': 'static',
+                                 'fonts_path': 'static/fonts'}
 
         App.__conf['generation'] = {'generate_audio': True,
                                     'audio_backend': 'tts',

@@ -10,6 +10,10 @@ import config as conf
 import typer
 from typing_extensions import Annotated
 
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+
 import torch
 import librosa
 import soundfile
@@ -37,6 +41,9 @@ logger = logging.getLogger(__name__)
 
 # App that holds the configuration
 app = conf.App
+
+# Typer app for multi command support
+typer_app = typer.Typer()
 
 
 def get_output_folder():
@@ -521,7 +528,7 @@ def purge_output_folder():
         for name in dirs:
             os.rmdir(os.path.join(root, name))
 
-
+@typer_app.command()
 def main(input: Annotated[str, typer.Option(
         help="Path to input text file.")] = "input.txt",
     config: Annotated[str, typer.Option(
@@ -556,5 +563,53 @@ def main(input: Annotated[str, typer.Option(
     process_input(input, bad_word_dict)
 
 
+def text_wrap(title, draw, font):
+    """
+    Wraps text such that when generating thumbnail the text doesn't overflow out of screen.
+    """
+    words = title.split(' ')
+    sentences = []
+    curr = []
+    curr_length = 0
+    for word in words:
+        word_len = draw.textlength(word, font)
+        # Max length of text in pixels is 1010 pixels
+        # and the text starts at position 245 pixels
+        if curr_length + word_len > 765:
+            sentences.append(' '.join(curr))
+            curr = []
+            curr_length = 0
+
+        curr.append(word)
+        curr_length += word_len
+    
+    if len(curr) != 0:
+        sentences.append(' '.join(curr))
+    
+    return '\n'.join(sentences)
+
+
+@typer_app.command()
+def thumbnail(title: Annotated[str, typer.Option(
+        help="Title to draw into background image")],
+    config: Annotated[str, typer.Option(
+        help="Path to config file.")] = "default.ini"):
+    
+    # Load config
+    read_config(config)
+
+    static_path = app.config()['default']['static_path']
+    fonts_path = app.config()['default']['fonts_path']
+
+    background = Image.open(os.path.join(static_path, 'backgroundrounded.png'))
+    myfont = ImageFont.truetype(os.path.join(fonts_path, 'IBMPlexSans-Regular.ttf'), 62)
+
+    draw = ImageDraw.Draw(background)
+    text = text_wrap(title, draw, myfont)
+
+    draw.text((245, 140), text, font=myfont, fill=(255,255,255))
+
+    background.show()
+
 if __name__ == "__main__":
-    typer.run(main)
+    typer_app()
