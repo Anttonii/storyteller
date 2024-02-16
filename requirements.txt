@@ -5,3 +5,6 @@ moviepy
 srt_equalizer
 pydub
 boto3
+google-auth-oauthlib 
+google-auth-httplib2
+google-api-python-client

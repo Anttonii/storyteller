@@ -5,7 +5,10 @@ import logging
 import shutil
 import re
 import random
+
 import config as conf
+import youtube as yt
+from video_metadata import VideoMetadata
 
 import typer
 from typing_extensions import Annotated
@@ -44,6 +47,12 @@ app = conf.App
 
 # Typer app for multi command support
 typer_app = typer.Typer()
+
+# Standard tags to append to the video metadata
+video_tags = set(['reddit', 'story'])
+
+# Standard video description
+video_description = "Thanks for watching <3"
 
 
 def get_output_folder():
@@ -112,6 +121,15 @@ def prune_output_folder():
         folder_path = os.path.join(output_path, folder)
         shutil.rmtree(folder_path)
         list.pop(0)
+
+
+def get_latest_output():
+    """
+    Returns path to folder that was generated latest
+    """
+    output_path = app.config()['default']['output_path']
+    list = [d for d in os.listdir(output_path)]
+    return os.path.join(output_path, list[-1])
 
 
 def load_bad_words(bw_path):
@@ -213,7 +231,8 @@ def generate_polly_audio(input, output):
 
     Raises an AssertionException if Polly fails to produce a response.
     """
-    logger.info(f"Making a request to polly with the following input:\n{input}\n")
+    logger.info(
+        f"Making a request to polly with the following input:\n{input}\n")
     logger.info(f"This was outputted to path: {output}")
 
     session = Session(profile_name="my-dev-profile")
@@ -294,6 +313,9 @@ def generate_audio_file(title, input, output):
     normalized_title = effects.normalize(normalized_title)
     normalized_title.export(title_output_path, format=output_format)
 
+    # Adds a second of silence to the title audio file.
+    add_silence_to_audio(title_output_path, output_format, 1000)
+
     if app.config().getboolean('effects', 'use_effects'):
         use_effects(output_path)
 
@@ -348,20 +370,38 @@ def add_silence_gaps(audio, subs, output):
     return adjusted_path
 
 
+def add_silence_to_audio(audio_file, format, duration):
+    """
+    Adds silence to the end of an audio file for the duration given.
+
+    :param audio_file: the audio file to add the silence to.
+    :param duration: the duration of silence in milliseconds to add.
+
+    :return: path to the audio file.
+    """
+    silence = AudioSegment.silent(duration=duration)
+    audio = AudioSegment.from_file(audio_file)
+
+    combined = audio + silence
+    combined.export(audio_file, format=format)
+
+    return audio_file
+
+
 def add_sub_delay(sub_file, delay):
     """
     Adds a delay to the start of subtitles.
 
     :param sub_file: the sub file to manipulate
     :param delay: the delay in time delta
-    
+
     :return: the path to the sub file.
     """
     content = ""
     with open(sub_file, 'r') as file:
         content = file.read()
 
-    assert(len(content) != 0)
+    assert (len(content) != 0)
 
     srt_content = srt.parse(content)
     indices = list(srt_content)
@@ -369,12 +409,13 @@ def add_sub_delay(sub_file, delay):
     for index in indices:
         index.start = index.start + delay
         index.end = index.end + delay
-    
+
     delayed = srt.compose(indices)
     with open(sub_file, 'w') as delayed_file:
         delayed_file.write(delayed)
-    
+
     return sub_file
+
 
 def correct_subs(input: str, subs_path):
     """
@@ -404,6 +445,7 @@ def get_audio_length(audio_file):
     output = stdout.decode("utf-8").strip()
 
     return timedelta(seconds=float(output))
+
 
 def use_effects(audio):
     """
@@ -490,12 +532,16 @@ def generate_video(audio_file, title_audio_file, subs_file, thumbnail_file, outp
 
     combined_audio = concatenate_audioclips([title_audio, audio])
 
-    thumbnail_clip = ImageClip(thumbnail_file)
-    thumbnail_clip = thumbnail_clip.set_duration(title_audio.duration)
+    thumbnail_clip = ImageClip(thumbnail_file).set_start(
+        0).set_duration(title_audio.duration - 1)
+    thumbnail_clip = thumbnail_clip.resize(0.75)
+    thumbnail_clip = thumbnail_clip.set_pos(("center", "center"))
+    thumbnail_clip = thumbnail_clip.fadeout(duration=0.5, final_color=0)
 
     background_song = AudioFileClip(get_song_path())
     background_song = background_song.volumex(0.4)
-    background_song = background_song.audio_loop(duration=combined_audio.duration)
+    background_song = background_song.audio_loop(
+        duration=combined_audio.duration)
     comp_audio = CompositeAudioClip([combined_audio, background_song])
 
     clip = VideoFileClip(get_clip_path())
@@ -508,7 +554,8 @@ def generate_video(audio_file, title_audio_file, subs_file, thumbnail_file, outp
     subs = SubtitlesClip(subs_file, generator)
 
     output_file = os.path.join(output, 'output.mp4')
-    result = CompositeVideoClip([gen_clip, subs.set_pos(('center', 'center'))])
+    result = CompositeVideoClip(
+        [gen_clip, thumbnail_clip, subs.set_pos(('center', 'center'))])
     result.write_videofile(output_file, fps=clip.fps)
 
     return output_file
@@ -539,7 +586,8 @@ def process_input(title: str, input: str, bad_word_dict):
     thumbnail_path = generate_thumbnail(title, output)
 
     if gen_audio:
-        (output_audio_path, title_output_audio_path) = generate_audio_file(title, filtered, output)
+        (output_audio_path, title_output_audio_path) = generate_audio_file(
+            title, filtered, output)
 
     # The length of the title audio clip in milliseconds
     title_length = get_audio_length(title_output_audio_path)
@@ -549,7 +597,8 @@ def process_input(title: str, input: str, bad_word_dict):
             logger.warn(
                 "Can not generate subs without generating an audio file.")
         else:
-            output_subs_path = generate_subs(output_audio_path, output, title_length)
+            output_subs_path = generate_subs(
+                output_audio_path, output, title_length)
             if cor_subs:
                 output_subs_path = correct_subs(input, output_subs_path)
 
@@ -558,7 +607,8 @@ def process_input(title: str, input: str, bad_word_dict):
             logger.warn(
                 'Can not generate video without at least generating an audio file.')
         else:
-            generate_video(output_audio_path, title_output_audio_path, output_subs_path, thumbnail_path, output)
+            generate_video(output_audio_path, title_output_audio_path,
+                           output_subs_path, thumbnail_path, output)
 
     # Copy log file over
     shutil.copy("latest.log", os.path.join(output, "output.log"))
@@ -594,6 +644,7 @@ def purge_output_folder():
             os.remove(os.path.join(root, name))
         for name in dirs:
             os.rmdir(os.path.join(root, name))
+
 
 @typer_app.command()
 def generate(title: Annotated[str, typer.Option(
@@ -651,16 +702,22 @@ def text_wrap(title, draw, font):
 
         curr.append(word)
         curr_length += word_len
-    
+
     if len(curr) != 0:
         sentences.append(' '.join(curr))
-    
+
     return '\n'.join(sentences)
 
 
 def generate_thumbnail(title, output, show=False):
     """
     Generates a png file that has thumbnail image for the video.
+
+    :param title: the title to add to the thumbnail
+    :param output: the path to output the generated thumbnail
+    :param show: whether or not to show the generated thumbnail on a seperate window
+
+    :return: the path to the generated thumbnail.
     """
     logger.info("Generating thumbnail.")
 
@@ -668,29 +725,52 @@ def generate_thumbnail(title, output, show=False):
     fonts_path = app.config()['default']['fonts_path']
 
     background = Image.open(os.path.join(static_path, 'backgroundrounded.png'))
-    myfont = ImageFont.truetype(os.path.join(fonts_path, 'IBMPlexSans-Regular.ttf'), 62)
+    myfont = ImageFont.truetype(os.path.join(
+        fonts_path, 'IBMPlexSans-Regular.ttf'), 62)
 
     draw = ImageDraw.Draw(background)
     text = text_wrap(title, draw, myfont)
 
-    draw.text((245, 140), text, font=myfont, fill=(255,255,255))
+    draw.text((225, 140), text, font=myfont, fill=(255, 255, 255))
 
     output_path = os.path.join(output, "thumbnail.png")
     background.save(output_path)
-    
+
+    if show:
+        background.show()
+
     return output_path
+
 
 @typer_app.command()
 def thumbnail(title: Annotated[str, typer.Option(
         help="Title to draw into background image")],
     config: Annotated[str, typer.Option(
         help="Path to config file.")] = "default.ini"):
-    
+
     # Load config
     read_config(config)
 
     # Generate thumbnail, will saved in root with name thumbnail.png
     generate_thumbnail(title, '', True)
+
+
+@typer_app.command()
+def upload(path: Annotated[str, typer.Option(
+        help="Path to output folder to upload to Youtube. Uploads latest if nothing is set.")] = get_latest_output(),
+    private: Annotated[bool, typer.Option(
+        help="Whether or not to set the video private after uploading")] = False):
+
+    # Builds the youtube service
+    youtube = yt.get_authenticated_service()
+
+    # Generate the video metadata
+    metadata = VideoMetadata(
+        "This is a test generated title.", video_description, video_tags, 22, "unlisted")
+
+    # Initiate the upload
+    yt.upload_video(youtube, path, metadata)
+
 
 if __name__ == "__main__":
     typer_app()

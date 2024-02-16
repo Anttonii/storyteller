@@ -26,6 +26,7 @@
 
 - &cross; Implement automatic youtube video uploads
 - &cross; Youtube credientials should be loaded from environmental variables
+- &cross; Add proper tags and description generation from video content
 
 ## Server
 

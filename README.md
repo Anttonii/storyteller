@@ -67,7 +67,7 @@ which will generate audio, subtitles and video into the output folder. This will
 Running storyteller from command line is easy after dependencies have been installed.
 
 ```console
-$ python main.py --input input.txt --config default.ini
+$ python main.py --title "This is an example text to use with generating audio/vidoe" --input input.txt --config default.ini
 ```
 
 Produces audio, subtitles and video from a given input text file. To see all options, run:

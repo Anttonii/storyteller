@@ -6,3 +6,4 @@
 .DS_store
 latest.log
 input.txt
+client_secret.json
