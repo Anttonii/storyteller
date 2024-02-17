@@ -49,10 +49,10 @@ app = conf.App
 typer_app = typer.Typer()
 
 # Standard tags to append to the video metadata
-video_tags = set(['reddit', 'story'])
+video_tags = ['reddit', 'story']
 
 # Standard video description
-video_description = "Thanks for watching <3"
+video_description = "Thanks for watching, much love :)"
 
 
 def get_output_folder():
@@ -757,16 +757,28 @@ def thumbnail(title: Annotated[str, typer.Option(
 
 @typer_app.command()
 def upload(path: Annotated[str, typer.Option(
-        help="Path to output folder to upload to Youtube. Uploads latest if nothing is set.")] = get_latest_output(),
+        help="Path to output folder to upload to Youtube. Uploads latest if nothing is set.")] = "",
     private: Annotated[bool, typer.Option(
         help="Whether or not to set the video private after uploading")] = False):
+
+    # Load config
+    read_config("default.ini")
 
     # Builds the youtube service
     youtube = yt.get_authenticated_service()
 
+    if private:
+        privacy = "unlisted"
+    else:
+        privacy = "public"
+
+    # Needs to be called after reading config
+    if len(path) == 0:
+        path = get_latest_output()
+
     # Generate the video metadata
     metadata = VideoMetadata(
-        "This is a test generated title.", video_description, video_tags, 22, "unlisted")
+        "This is a test generated title.", video_description, video_tags, 22, privacy)
 
     # Initiate the upload
     yt.upload_video(youtube, path, metadata)

@@ -22,9 +22,9 @@ MAX_RETRIES = 10
 
 # Always retry when these exceptions are raised.
 RETRIABLE_EXCEPTIONS = (httplib2.HttpLib2Error, IOError, httplib.NotConnected,
-  httplib.IncompleteRead, httplib.ImproperConnectionState,
-  httplib.CannotSendRequest, httplib.CannotSendHeader,
-  httplib.ResponseNotReady, httplib.BadStatusLine)
+                        httplib.IncompleteRead, httplib.ImproperConnectionState,
+                        httplib.CannotSendRequest, httplib.CannotSendHeader,
+                        httplib.ResponseNotReady, httplib.BadStatusLine)
 
 # Always retry when an apiclient.errors.HttpError with one of these status
 # codes is raised.
@@ -53,10 +53,13 @@ VALID_PRIVACY_STATUSES = ('public', 'private', 'unlisted')
 logger = logging.getLogger(__name__)
 
 # Authorize the request and store authorization credentials.
+
+
 def get_authenticated_service():
-    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
-    credentials = flow.run_console()
-    return build(API_SERVICE_NAME, API_VERSION, credentials = credentials)
+    flow = InstalledAppFlow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, SCOPES)
+    credentials = flow.run_local_server(port=0)
+    return build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
 
 def upload_thumbnail(youtube, video_id, file):
@@ -75,6 +78,9 @@ def upload_video(youtube, output, metadata):
     video_file = os.path.join(output, 'output.mp4')
     thumbnail_file = os.path.join(output, 'thumbnail.png')
 
+    # Make sure a proper privacy status is used.
+    assert metadata.privacy_status in VALID_PRIVACY_STATUSES
+
     body = dict(
         snippet=dict(
             title=metadata.title,
@@ -91,15 +97,19 @@ def upload_video(youtube, output, metadata):
     insert_request = youtube.videos().insert(
         part=",".join(body.keys()),
         body=body,
-        media_body= MediaFileUpload(
+        media_body=MediaFileUpload(
             video_file, chunksize=-1, resumable=True)
     )
 
     video_id = resumable_upload(insert_request)
-    upload_thumbnail(youtube, video_id, thumbnail_file)
+
+    if video_id is not None:
+        upload_thumbnail(youtube, video_id, thumbnail_file)
 
 # This method implements an exponential backoff strategy to resume a
 # failed upload.
+
+
 def resumable_upload(request):
     response = None
     error = None
@@ -110,13 +120,15 @@ def resumable_upload(request):
             status, response = request.next_chunk()
             if response is not None:
                 if 'id' in response:
-                    print(f'Video id {response['id']} was successfully uploaded.')
+                    id = response['id']
+                    print(f'Video id {id} was successfully uploaded.')
+                    return id
                 else:
                     exit('The upload failed with an unexpected response: %s' % response)
         except HttpError as e:
             if e.resp.status in RETRIABLE_STATUS_CODES:
                 error = 'A retriable HTTP error %d occurred:\n%s' % (e.resp.status,
-                                                                    e.content)
+                                                                     e.content)
             else:
                 raise
         except RETRIABLE_EXCEPTIONS as e:
